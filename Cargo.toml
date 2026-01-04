@@ -1,0 +1,16 @@
+cargo-features = ["trim-paths"]
+
+[package]
+name = "noisegen"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+cpal = "0.15.3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true
+trim-paths = true

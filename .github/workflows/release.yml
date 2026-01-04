@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BIN_NAME: noisegen
+
+jobs:
+  build-and-release:
+    name: Build and Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux (x86_64)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset_suffix: linux-x86_64
+            use_cross: false
+
+          # Windows (x86_64)
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_suffix: windows-x86_64.exe
+            use_cross: false
+
+          # macOS (x86_64)
+          # Apple Silicon 向けには aarch64-apple-darwin を追加する必要がある
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            asset_suffix: macos-x86_64
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build
+        run: |
+          cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Rename binary for release
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp "target/${{ matrix.target }}/release/${{ env.BIN_NAME }}.exe" "${{ env.BIN_NAME }}-${{ github.ref_name }}-${{ matrix.asset_suffix }}"
+          else
+            cp "target/${{ matrix.target }}/release/${{ env.BIN_NAME }}" "${{ env.BIN_NAME }}-${{ github.ref_name }}-${{ matrix.asset_suffix }}"
+          fi
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ env.BIN_NAME }}-${{ github.ref_name }}-${{ matrix.asset_suffix }}
+          generate_release_notes: true
