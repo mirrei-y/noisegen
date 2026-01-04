@@ -52,6 +52,10 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
       - name: Build
         run: |
           cargo build --release --locked --target ${{ matrix.target }}
